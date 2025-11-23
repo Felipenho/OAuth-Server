@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_MULTIPLE_DATABASES: ${POSTGRES_MULTIPLE_DATABASES}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U caerel -d oauth_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - caerel
+
+  oauth-server:
+    build: .
+    container_name: oauth-server
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    ports:
+      - "8001:8000"   # 8001 no host → 8000 no container
+    # Ou explícito na interface:
+    # - "127.0.0.1:8001:8000"  # liga só ao localhost do host
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    # volumes:
+    #   - oauth:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - caerel
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_LISTEN_PORT: ${PGADMIN_LISTEN_PORT}
+    volumes:
+      - pg-admin:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "80:80"
+    networks:
+      - caerel
+
+networks:
+  caerel:
+    external: true
+volumes:
+  postgres:
+    external: true
+  pg-admin:
+    external: true
