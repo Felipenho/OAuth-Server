@@ -8,11 +8,14 @@ RUN apt-get update && apt-get install -y \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
+# Instalar uv
+RUN pip install --no-cache-dir uv
+
 # Copiar arquivos de dependências
 COPY pyproject.toml .
 
 # Instalar dependências Python
-RUN pip install --no-cache-dir -e .
+RUN uv pip install --system --no-cache-dir -e .
 
 # Copiar o código da aplicação
 COPY . .

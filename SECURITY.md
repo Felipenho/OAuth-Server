@@ -168,11 +168,11 @@ services:
 ### Comandos Úteis
 ```bash
 # Verificar vulnerabilidades em dependências
-pip install safety
+uv pip install safety
 safety check
 
 # Análise estática de segurança
-pip install bandit
+uv pip install bandit
 bandit -r app/
 
 # Scan de container

@@ -80,7 +80,7 @@ cd oauth
 
 2. Instale as dependências:
 ```bash
-pip install -e .
+uv pip install -e .
 ```
 
 3. Configure o PostgreSQL:

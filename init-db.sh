@@ -9,6 +9,12 @@ function create_user_and_database() {
 	    CREATE DATABASE $database;
 	    GRANT ALL PRIVILEGES ON DATABASE $database TO $POSTGRES_USER;
 EOSQL
+	
+	# Ativa extensão pgvector
+	echo "Enabling pgvector extension for '$database'"
+	psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname=$database <<-EOSQL
+	    CREATE EXTENSION IF NOT EXISTS vector;
+EOSQL
 }
 
 if [ -n "$POSTGRES_MULTIPLE_DATABASES" ]; then
@@ -16,5 +22,5 @@ if [ -n "$POSTGRES_MULTIPLE_DATABASES" ]; then
 	for db in $(echo $POSTGRES_MULTIPLE_DATABASES | tr ',' ' '); do
 		create_user_and_database $db
 	done
-	echo "Multiple databases created"
+	echo "Multiple databases created with pgvector enabled"
 fi

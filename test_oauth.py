@@ -79,7 +79,7 @@ def verify_token(token):
         "Authorization": f"Bearer {token}"
     }
     
-    print("\n🔍 Verificando token")
+    print("\n[SEARCH] Verificando token")
     response = requests.get(url, headers=headers)
     
     if response.status_code == 200:

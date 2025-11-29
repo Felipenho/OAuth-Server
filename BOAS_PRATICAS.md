@@ -133,7 +133,7 @@ Este servidor OAuth2 agora implementa **TODAS** as principais boas práticas de 
 - **Distributed Tracing**: OpenTelemetry
 - **Cache Layer**: Redis para tokens
 
-## 🔍 Como Verificar
+## [SEARCH] Como Verificar
 
 ### 1. Ver Logs
 ```bash
