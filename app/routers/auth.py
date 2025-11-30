@@ -1,17 +1,19 @@
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-from ..models import User, get_db
-from ..schemas import UserCreate, UserResponse, UserLogin, Token, TokenData
+from ..models import User, RefreshToken, get_db
+from ..schemas import UserCreate, UserResponse, UserLogin, Token, TokenData, RefreshTokenRequest
 from ..utils import (
     verify_password,
     get_password_hash,
     create_access_token,
     decode_access_token,
+    create_refresh_token,
+    get_refresh_token_expire_time,
 )
 from ..config import settings
 
@@ -161,20 +163,33 @@ async def login(
         )
     
     try:
+        # Criar access token
         access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": user.username, "user_id": user.id},
             expires_delta=access_token_expires
         )
         
+        # Criar e salvar refresh token
+        refresh_token_str = create_refresh_token()
+        refresh_token = RefreshToken(
+            token=refresh_token_str,
+            user_id=user.id,
+            expires_at=get_refresh_token_expire_time()
+        )
+        db.add(refresh_token)
+        db.commit()
+        
         logger.info(f"Login bem-sucedido: {user.username} (ID: {user.id})")
         
         return {
             "access_token": access_token,
+            "refresh_token": refresh_token_str,
             "token_type": "bearer",
             "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
         }
     except Exception as e:
+        db.rollback()
         logger.error(f"Erro ao gerar token para {user.username}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -203,20 +218,33 @@ async def login_json(user_data: UserLogin, db: Session = Depends(get_db)):
         )
     
     try:
+        # Criar access token
         access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": user.username, "user_id": user.id},
             expires_delta=access_token_expires
         )
         
+        # Criar e salvar refresh token
+        refresh_token_str = create_refresh_token()
+        refresh_token = RefreshToken(
+            token=refresh_token_str,
+            user_id=user.id,
+            expires_at=get_refresh_token_expire_time()
+        )
+        db.add(refresh_token)
+        db.commit()
+        
         logger.info(f"Login bem-sucedido (JSON): {user.username} (ID: {user.id})")
         
         return {
             "access_token": access_token,
+            "refresh_token": refresh_token_str,
             "token_type": "bearer",
             "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
         }
     except Exception as e:
+        db.rollback()
         logger.error(f"Erro ao gerar token (JSON) para {user.username}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -249,3 +277,84 @@ async def verify_token(current_user: Annotated[User, Depends(get_current_active_
         "username": current_user.username,
         "email": current_user.email,
     }
+
+
+@router.post("/refresh", response_model=Token)
+async def refresh_access_token(request: RefreshTokenRequest, db: Session = Depends(get_db)):
+    """
+    Endpoint para renovar access token usando refresh token
+    
+    - **refresh_token**: Refresh token válido
+    
+    Retorna novo access_token e refresh_token
+    """
+    logger.info("Tentativa de refresh de token")
+    
+    # Buscar refresh token no banco
+    db_refresh_token = db.query(RefreshToken).filter(
+        RefreshToken.token == request.refresh_token,
+        RefreshToken.is_revoked == False
+    ).first()
+    
+    if not db_refresh_token:
+        logger.warning("Refresh token inválido ou revogado")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token"
+        )
+    
+    # Verificar se o token expirou
+    if db_refresh_token.expires_at < datetime.now(timezone.utc):
+        logger.warning(f"Refresh token expirado para user_id={db_refresh_token.user_id}")
+        db_refresh_token.is_revoked = True
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token expired"
+        )
+    
+    # Buscar usuário
+    user = db.query(User).filter(User.id == db_refresh_token.user_id).first()
+    if not user or not user.is_active:
+        logger.warning(f"Usuário inativo ou não encontrado: user_id={db_refresh_token.user_id}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found or inactive"
+        )
+    
+    try:
+        # Revogar o refresh token antigo
+        db_refresh_token.is_revoked = True
+        
+        # Criar novo access token
+        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user.username, "user_id": user.id},
+            expires_delta=access_token_expires
+        )
+        
+        # Criar novo refresh token
+        new_refresh_token_str = create_refresh_token()
+        new_refresh_token = RefreshToken(
+            token=new_refresh_token_str,
+            user_id=user.id,
+            expires_at=get_refresh_token_expire_time()
+        )
+        db.add(new_refresh_token)
+        db.commit()
+        
+        logger.info(f"Token renovado com sucesso para user={user.username} (ID: {user.id})")
+        
+        return {
+            "access_token": access_token,
+            "refresh_token": new_refresh_token_str,
+            "token_type": "bearer",
+            "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        }
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Erro ao renovar token para user_id={user.id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error refreshing token"
+        )

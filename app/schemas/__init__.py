@@ -1,5 +1,6 @@
 from .user import UserBase, UserCreate, UserLogin, UserResponse, UserInDB
 from .token import Token, TokenData
+from .refresh import RefreshTokenRequest
 
 __all__ = [
     "UserBase",
@@ -9,4 +10,5 @@ __all__ = [
     "UserInDB",
     "Token",
     "TokenData",
+    "RefreshTokenRequest",
 ]

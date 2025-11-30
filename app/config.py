@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "your-secret-key-here-change-this-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     JWT_ISSUER: str = "auth"
     JWT_AUDIENCE: str = "mcp"
     

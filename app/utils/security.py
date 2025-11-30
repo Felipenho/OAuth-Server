@@ -1,7 +1,8 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt
 import bcrypt
+import secrets
 from ..config import settings
 
 
@@ -31,7 +32,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     Returns:
         Token JWT como string
     """
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     if expires_delta:
         expire = now + expires_delta
@@ -82,3 +83,23 @@ def decode_access_token(token: str) -> Optional[dict]:
         return payload
     except JWTError:
         return None
+
+
+def create_refresh_token() -> str:
+    """
+    Cria um refresh token seguro e aleatório
+    
+    Returns:
+        Token aleatório de 64 caracteres hexadecimais
+    """
+    return secrets.token_hex(32)
+
+
+def get_refresh_token_expire_time() -> datetime:
+    """
+    Calcula o tempo de expiração para um refresh token
+    
+    Returns:
+        Datetime de expiração
+    """
+    return datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
