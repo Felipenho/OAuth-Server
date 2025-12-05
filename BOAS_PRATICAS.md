@@ -165,12 +165,12 @@ curl http://localhost:8001/health
 
 | Categoria | Score |
 |-----------|-------|
-| Segurança | 10/10 ⭐⭐⭐⭐⭐ |
-| Observabilidade | 5/5 ⭐⭐⭐⭐⭐ |
-| Arquitetura | 6/6 ⭐⭐⭐⭐⭐ |
-| Qualidade | 5/5 ⭐⭐⭐⭐⭐ |
-| Documentação | 6/6 ⭐⭐⭐⭐⭐ |
-| DevOps | 5/5 ⭐⭐⭐⭐⭐ |
+| Segurança | 10/10 [STAR][STAR][STAR][STAR][STAR] |
+| Observabilidade | 5/5 [STAR][STAR][STAR][STAR][STAR] |
+| Arquitetura | 6/6 [STAR][STAR][STAR][STAR][STAR] |
+| Qualidade | 5/5 [STAR][STAR][STAR][STAR][STAR] |
+| Documentação | 6/6 [STAR][STAR][STAR][STAR][STAR] |
+| DevOps | 5/5 [STAR][STAR][STAR][STAR][STAR] |
 | **TOTAL** | **37/37** 🏆 |
 
 ## [SUCCESS] Conclusão

@@ -35,8 +35,19 @@ app = FastAPI(
 
 # Configurar CORS
 # Em desenvolvimento, permite todas as origens
-# Em produção, configure ALLOWED_ORIGINS com domínios específicos
-allowed_origins = ["*"] if settings.ALLOWED_ORIGINS == "*" else settings.ALLOWED_ORIGINS.split(",")
+# Em produção, REJEITA * e exige domínios específicos
+if settings.ALLOWED_ORIGINS == "*":
+    if not settings.DEBUG:
+        raise ValueError(
+            "🔥 ERRO DE SEGURANÇA: CORS configurado como '*' em modo PRODUÇÃO!\n"
+            "   Configure ALLOWED_ORIGINS com domínios específicos:\n"
+            "   ALLOWED_ORIGINS=https://seusite.com,https://app.seusite.com"
+        )
+    allowed_origins = ["*"]
+    logger.warning("⚠️  CORS configurado como '*' (apenas para desenvolvimento)")
+else:
+    allowed_origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",")]
+    logger.info(f"CORS configurado com origens específicas: {allowed_origins}")
 
 app.add_middleware(
     CORSMiddleware,
